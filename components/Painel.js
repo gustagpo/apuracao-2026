@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { geoMercator, geoPath } from "d3-geo";
 import { scaleSqrt } from "d3-scale";
+import Comparativo, { comparar } from "./Comparativo";
 
 const UFS = ["ac","al","am","ap","ba","ce","df","es","go","ma","mg","ms","mt","pa","pb","pe","pi","pr","rj","rn","ro","rr","rs","sc","se","sp","to"];
 const nf = new Intl.NumberFormat("pt-BR");
@@ -31,6 +32,8 @@ export default function Painel() {
   const [erro, setErro] = useState(false);
   const [tip, setTip] = useState(null);
   const [atualizadoEm, setAtualizadoEm] = useState(null);
+  const [t1, setT1] = useState(null);
+  const [modo, setModo] = useState("lider");
   const buscando = useRef(false);
   const mapaRef = useRef(null);
 
@@ -70,6 +73,8 @@ export default function Painel() {
     finally { setMunsCarregando(false); }
   }, []);
 
+  useEffect(() => { api("/api/ufs1t").then(setT1).catch(() => {}); }, []);
+
   useEffect(() => { api("/api/geo").then(setGeo).catch((e) => { setErro(true); setMsg(`Sem contorno do mapa (${e.message}); os números seguem funcionando.`); }); buscar(); }, [buscar]);
 
   useEffect(() => {
@@ -104,9 +109,18 @@ export default function Painel() {
     return (mudados.length ? mudados.concat(resto) : arr).slice(0, 120);
   }, [muns]);
 
-  const mostrarTip = (ev, titulo, p) => {
+  const corVariacao = (uf) => {
+    const c = comparar(t1?.[uf], ufs[uf]);
+    if (!c) return "var(--mapa-vazio)";
+    const quem = c.dsaldo >= 0 ? c.a.n : c.b.n;
+    const forca = Math.min(1, Math.abs(c.dsaldo) / Math.max(1, c.validos2) / 0.08);
+    return `color-mix(in srgb, ${cor(quem)} ${Math.round(30 + forca * 70)}%, var(--mapa-vazio))`;
+  };
+  const corUF = (uf) => (modo === "variacao" ? corVariacao(uf) : corArea(ufs[uf]));
+
+  const mostrarTip = (ev, titulo, p, uf) => {
     const r = mapaRef.current.getBoundingClientRect();
-    setTip({ x: Math.min(ev.clientX - r.left + 12, r.width - 270), y: ev.clientY - r.top + 12, titulo, p });
+    setTip({ x: Math.min(ev.clientX - r.left + 12, r.width - 270), y: ev.clientY - r.top + 12, titulo, p, uf });
   };
 
   return (
@@ -148,9 +162,9 @@ export default function Painel() {
               {geo && path && geo.features.map((f) => {
                 const u = f.properties.sigla.toLowerCase();
                 return (
-                  <path key={u} d={path(f)} className={`uf${ufSel === u ? " sel" : ""}`} fill={corArea(ufs[u])}
+                  <path key={u} d={path(f)} className={`uf${ufSel === u ? " sel" : ""}`} fill={corUF(u)}
                     style={{ strokeWidth: 0.8 / transform.k }}
-                    onMouseMove={(ev) => mostrarTip(ev, f.properties.name, ufs[u])}
+                    onMouseMove={(ev) => mostrarTip(ev, f.properties.name, ufs[u], u)}
                     onClick={() => setUfSel(ufSel === u ? null : u)} />
                 );
               })}
@@ -168,12 +182,23 @@ export default function Painel() {
               <b>{tip.titulo}</b>
               {tip.p?.cands?.length ? tip.p.cands.map((c) => <div key={c.n}>{c.nm}: {pct(c.pvap)} ({nf.format(c.vap)})</div>) : "Sem votos apurados ainda"}
               {tip.p?.pst != null && <div>Seções: {pct(tip.p.pst)}</div>}
+              {tip.uf && comparar(t1?.[tip.uf], ufs[tip.uf]) && (() => { const c = comparar(t1[tip.uf], ufs[tip.uf]); return <div>1º → 2º: {c.a.nm} {c.a.p1.toFixed(1)}% → {c.a.p2.toFixed(1)}%</div>; })()}
             </div>
           )}
           <div className="legenda">
-            {(br?.cands || []).map((c) => <span key={c.n}><i style={{ background: cor(c.n) }} />{c.nm} lidera</span>)}
-            <span><i style={{ background: "var(--mapa-vazio)" }} />sem votos ainda</span>
+            {modo === "lider" ? (<>
+              {(br?.cands || []).map((c) => <span key={c.n}><i style={{ background: cor(c.n) }} />{c.nm} lidera</span>)}
+              <span><i style={{ background: "var(--mapa-vazio)" }} />sem votos ainda</span>
+            </>) : (<>
+              {(br?.cands || []).map((c) => <span key={c.n}><i style={{ background: cor(c.n) }} />{c.nm} ganhou terreno desde o 1º turno</span>)}
+            </>)}
           </div>
+          {t1 && !ufSel && (
+            <div className="modos">
+              <button className={modo === "lider" ? "" : "sec"} onClick={() => setModo("lider")}>Quem lidera</button>
+              <button className={modo === "variacao" ? "" : "sec"} onClick={() => setModo("variacao")}>Mudança desde o 1º turno</button>
+            </div>
+          )}
         </div>
 
         <aside className="lado">
@@ -217,6 +242,8 @@ export default function Painel() {
           )}
         </aside>
       </div>
+
+      <Comparativo t1={t1} t2br={br} t2ufs={ufs} cor={cor} />
 
       <div className="controles">
         <button onClick={buscar}>Atualizar agora</button>

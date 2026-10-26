@@ -60,3 +60,21 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--alerta);outlin
 .erro{color:var(--alerta);font-weight:600}
 a{color:inherit}
 @media (prefers-reduced-motion:reduce){.estado .barra i{transition:none}.mun.pulse{animation:none}}
+
+.modos{display:flex;gap:8px;padding:8px 4px 2px}
+.modos button{padding:8px 12px;min-height:36px;font-size:.85rem}
+.comp{background:var(--painel);border:1px solid var(--linha);border-radius:6px;padding:12px 14px;margin-top:12px}
+.comp h2{font-size:1.15rem;margin:0 0 4px;font-weight:800;font-stretch:85%}
+.comp .dica{color:var(--suave);font-size:.9rem;margin:0 0 10px}
+.comp .cards{margin-bottom:8px}
+.comp .cand .pct{font-size:1.4rem}
+.comp .cand small{font-size:.85rem;font-weight:600;color:var(--suave)}
+.comp-ctl{display:flex;gap:10px;align-items:center;margin:6px 0 8px}
+.tabela-wrap{overflow:auto;max-height:560px;border:1px solid var(--linha);border-radius:6px}
+.tabela{width:100%;border-collapse:collapse;font-size:.88rem}
+.tabela th,.tabela td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--linha);white-space:nowrap}
+.tabela th{position:sticky;top:0;background:var(--painel);font-weight:700;color:var(--suave);font-size:.8rem}
+.tabela td.txt,.tabela th:first-child{text-align:left}
+.tabela td small{color:var(--suave);font-size:.78rem}
+.tabela tr.virou td.txt{font-weight:800}
+.tabela tr.virou td.txt small{color:var(--ok);font-weight:700;margin-left:6px}
